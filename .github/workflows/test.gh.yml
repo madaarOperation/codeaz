@@ -1,0 +1,21 @@
+# =================================================== #
+# Project: codeaz
+# =================================================== #
+name: Test Codeaz Action
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout the codebase
+      - name: checkout codebase
+        uses: actions/checkout@v4
+      # 2. Test codeaz action
+      - name: test codeaz action
+        uses: ./
+        with:
+          code-owner: "Ali"
+          github-token: ""
