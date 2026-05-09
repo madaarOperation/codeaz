@@ -1,0 +1,32 @@
+{
+  "name": "codeaz",
+  "version": "1.0.0",
+  "description": "custom github actions to create a role system over github repo",
+  "keywords": [
+    "github",
+    "action"
+  ],
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "main.ts",
+  "scripts": {
+    "test": "act push -j test-revert -s GITHUB_TOKEN",
+    "clean": "rm -rf lib dist",
+    "build:lib": "tsc",
+    "build:dist": "ncc build src/index.ts -o dist --source-map",
+    "build": "npm run clean && npm run build:lib && npm run build:dist",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.2",
+    "@vercel/ncc": "^0.38.4",
+    "prettier": "3.8.3"
+  }
+}

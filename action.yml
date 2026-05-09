@@ -1,0 +1,20 @@
+# =================================================== #
+# Project: Codeaz
+# =================================================== #
+name: Codeaz
+description: "Codeaz is a github action to build role base system over github repo"
+inputs:
+  code-owner:
+    description: "github users allow to push to repo"
+    required: true
+    default: ""
+  github-token: 
+    description: "github token to can reset any changes out code owners"
+    required: true
+    default: ""
+outputs:
+  time:
+    description: "The Time Code Merge Happen"
+runs:
+  using: node24
+  main: dist/index.js
