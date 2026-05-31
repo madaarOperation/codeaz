@@ -27,7 +27,8 @@ const parseCodeOwner = (input: string | undefined): Record<string, string> => {
 async function run() {
   try {
     const codeOwner = parseCodeOwner(core.getInput("code-owner"));
-    console.log(`Hello ${codeOwner}`);
+    const recordLength = Object.keys(codeOwner).length;
+    console.log(`Hello ${JSON.stringify(codeOwner)} ${recordLength}`);
     core.setOutput("time", new Date().toTimeString());
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
