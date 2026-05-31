@@ -26,7 +26,7 @@ const parseCodeOwner = (input: string | undefined): Record<string, string> => {
 };
 async function run() {
   try {
-    const codeOwner = core.getInput("code-owner");
+    const codeOwner = parseCodeOwner(core.getInput("code-owner"));
     console.log(`Hello ${codeOwner}`);
     core.setOutput("time", new Date().toTimeString());
   } catch (error) {

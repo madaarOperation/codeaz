@@ -1,11 +1,10 @@
-# =================================================== #
+# ===================================================  #
 # Project: codeaz
-# =================================================== #
+# ===================================================  #
 name: Test Codeaz Action
 on:
   push:
     branches: [main]
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,5 +16,5 @@ jobs:
       - name: test codeaz action
         uses: ./
         with:
-          code-owner: "Ali"
+          code-owner: vp=hassan,tl=negam,dvr=ali
           github-token: ""
