@@ -31837,7 +31837,7 @@ function error(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function warning(message, properties = {}) {
-    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('warning', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a notice issue
@@ -36261,7 +36261,6 @@ function getOctokit(token, options, ...additionalPlugins) {
 // =================================================== #
 
 
-
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (input) => {
     const codeOwners = {};
@@ -36299,47 +36298,21 @@ async function run() {
         }
         info(`Successfully extract runner name: ${username}`);
         // 2. Check Action Runner Permission
-        // const teamMembers = codeOwner["tm"] || [];
-        // const isTeamMember = teamMembers.some(
-        //   (member) => member.toLowerCase() == username.toLowerCase(),
-        // );
-        // const branchName = context.ref.replace("refs/heads/", "");
-        //
-        // if (isTeamMember) {
-        //   core.info(
-        //     `Access Granted: ${username} is a member of our development team at ${branchName}`,
-        //   );
-        // } else {
-        //   core.warning(
-        //     `Access Denied: ${username} is NOT in our development team at ${branchName}`,
-        //   );
-        //   core.info(`Resetting Branch '${branchName}' Changes`);
-        //   try {
-        //     let stdout = "";
-        //     await exec.exec("git", ["rev-parse", "--verify", "HEAD^"], {
-        //       listeners: { stdout: (data: Buffer) => (stdout += data.toString()) },
-        //       ignoreReturnCode: true,
-        //     });
-        //     if (!stdout) {
-        //       // No Parent Commit
-        //       core.info(
-        //         "No Parent Commit To Reset To; cleaning working tree instead.",
-        //       );
-        //       await exec.exec("git", ["clean", "-fd"]);
-        //       await exec.exec("git", ["checkout", "--", "."]);
-        //     } else {
-        //       await exec.exec("git", ["reset", "--hard", "HEAD~1"]);
-        //     }
-        //     core.info("Reset Completed.");
-        //   } catch (err: any) {
-        //     core.setFailed(
-        //       `Failed To Reset branch Changes: ${err?.message || String(err)}`,
-        //     );
-        //   }
-        // }
+        const teamMembers = codeOwner["tm"] || [];
+        const opsMembers = codeOwner["ops"] || [];
+        const isTeamMember = teamMembers.some((member) => member.toLowerCase() == username.toLowerCase());
+        const isOpsMembers = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
+        const branchName = github_context.ref.replace("refs/heads/", "");
+        if (isTeamMember || isOpsMembers) {
+            info(`Access Granted: ${username} is a member of our development team at ${branchName}`);
+        }
+        else {
+            warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
+            info(`Resetting Branch '${branchName}' Changes`);
+        }
         // 3. Set Output Values
-        setOutput("time", new Date().toTimeString());
         setOutput("runner_name: ", username);
+        setOutput("time", new Date().toTimeString());
     }
     catch (error) {
         if (error instanceof Error)

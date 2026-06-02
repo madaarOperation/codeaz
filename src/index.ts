@@ -2,7 +2,6 @@
 // Project: Codeaz
 // =================================================== #
 import * as core from "@actions/core";
-import * as exec from "@actions/exec";
 import { context } from "@actions/github";
 
 // INFO: Generate A Code Owners And It's Rule Key
@@ -47,49 +46,33 @@ async function run() {
       return;
     }
     core.info(`Successfully extract runner name: ${username}`);
+
     // 2. Check Action Runner Permission
-    // const teamMembers = codeOwner["tm"] || [];
-    // const isTeamMember = teamMembers.some(
-    //   (member) => member.toLowerCase() == username.toLowerCase(),
-    // );
-    // const branchName = context.ref.replace("refs/heads/", "");
-    //
-    // if (isTeamMember) {
-    //   core.info(
-    //     `Access Granted: ${username} is a member of our development team at ${branchName}`,
-    //   );
-    // } else {
-    //   core.warning(
-    //     `Access Denied: ${username} is NOT in our development team at ${branchName}`,
-    //   );
-    //   core.info(`Resetting Branch '${branchName}' Changes`);
-    //   try {
-    //     let stdout = "";
-    //     await exec.exec("git", ["rev-parse", "--verify", "HEAD^"], {
-    //       listeners: { stdout: (data: Buffer) => (stdout += data.toString()) },
-    //       ignoreReturnCode: true,
-    //     });
-    //     if (!stdout) {
-    //       // No Parent Commit
-    //       core.info(
-    //         "No Parent Commit To Reset To; cleaning working tree instead.",
-    //       );
-    //       await exec.exec("git", ["clean", "-fd"]);
-    //       await exec.exec("git", ["checkout", "--", "."]);
-    //     } else {
-    //       await exec.exec("git", ["reset", "--hard", "HEAD~1"]);
-    //     }
-    //     core.info("Reset Completed.");
-    //   } catch (err: any) {
-    //     core.setFailed(
-    //       `Failed To Reset branch Changes: ${err?.message || String(err)}`,
-    //     );
-    //   }
-    // }
+    const teamMembers = codeOwner["tm"] || [];
+    const opsMembers = codeOwner["ops"] || [];
+    const isTeamMember = teamMembers.some(
+      (member) => member.toLowerCase() == username.toLowerCase(),
+    );
+    const isOpsMembers = opsMembers.some(
+      (member) => member.toLowerCase() == username.toLowerCase(),
+    );
+
+    const branchName = context.ref.replace("refs/heads/", "");
+
+    if (isTeamMember || isOpsMembers) {
+      core.info(
+        `Access Granted: ${username} is a member of our development team at ${branchName}`,
+      );
+    } else {
+      core.warning(
+        `Access Denied: ${username} is NOT in our development team at ${branchName}`,
+      );
+      core.info(`Resetting Branch '${branchName}' Changes`);
+    }
 
     // 3. Set Output Values
-    core.setOutput("time", new Date().toTimeString());
     core.setOutput("runner_name: ", username);
+    core.setOutput("time", new Date().toTimeString());
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }
