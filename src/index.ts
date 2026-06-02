@@ -2,7 +2,6 @@
 // Project: Codeaz
 // =================================================== #
 import * as core from "@actions/core";
-import * as exec from "@actions/exec";
 import { context } from "@actions/github";
 
 // INFO: Generate A Code Owners And It's Rule Key
@@ -49,9 +48,9 @@ async function run() {
     core.info(`Successfully extract runner name: ${username}`);
 
     // 2. Check Action Runner Permission
-    const teamMembers = codeOwner["tm"] || [];
+    const devMembers = codeOwner["dev"] || [];
     const opsMembers = codeOwner["ops"] || [];
-    const isTeamMember = teamMembers.some(
+    const isDevMember = devMembers.some(
       (member) => member.toLowerCase() == username.toLowerCase(),
     );
     const isOpsMember = opsMembers.some(
@@ -59,7 +58,7 @@ async function run() {
     );
     const branchName = context.ref.replace("refs/heads/", "");
 
-    if (isTeamMember || isOpsMember) {
+    if (isDevMember || isOpsMember) {
       core.info(
         `Access Granted: ${username} is a member of our development team at ${branchName}`,
       );
@@ -68,29 +67,7 @@ async function run() {
         `Access Denied: ${username} is NOT in our development team at ${branchName}`,
       );
       core.info(`Resetting Branch '${branchName}' Changes`);
-      try {
-        let stdout = "";
-        await exec.exec("git", ["rev-parse", "--verify", "HEAD^"], {
-          listeners: { stdout: (data: Buffer) => (stdout += data.toString()) },
-          ignoreReturnCode: true,
-        });
-        if (!stdout) {
-          // No Parent Commit
-          core.info(
-            "No Parent Commit To Reset To; cleaning working tree instead.",
-          );
-          await exec.exec("git", ["clean", "-fd"]);
-          await exec.exec("git", ["checkout", "--", "."]);
-        } else {
-          // Parent Commit
-          await exec.exec("git", ["reset", "--hard", "HEAD~1"]);
-        }
-        core.info("Reset Completed.");
-      } catch (err: any) {
-        core.setFailed(
-          `Failed To Reset branch Changes: ${err?.message || String(err)}`,
-        );
-      }
+      // TODO: Need To Reset User Work
     }
 
     // 3. Set Output Values
