@@ -2,6 +2,7 @@
 // Project: Codeaz
 // =================================================== #
 import * as core from "@actions/core";
+import * as exec from "@actions/exec";
 import { context } from "@actions/github";
 
 // INFO: Generate A Code Owners And It's Rule Key
@@ -53,13 +54,12 @@ async function run() {
     const isTeamMember = teamMembers.some(
       (member) => member.toLowerCase() == username.toLowerCase(),
     );
-    const isOpsMembers = opsMembers.some(
+    const isOpsMember = opsMembers.some(
       (member) => member.toLowerCase() == username.toLowerCase(),
     );
-
     const branchName = context.ref.replace("refs/heads/", "");
 
-    if (isTeamMember || isOpsMembers) {
+    if (isTeamMember || isOpsMember) {
       core.info(
         `Access Granted: ${username} is a member of our development team at ${branchName}`,
       );
@@ -68,11 +68,34 @@ async function run() {
         `Access Denied: ${username} is NOT in our development team at ${branchName}`,
       );
       core.info(`Resetting Branch '${branchName}' Changes`);
+      try {
+        let stdout = "";
+        await exec.exec("git", ["rev-parse", "--verify", "HEAD^"], {
+          listeners: { stdout: (data: Buffer) => (stdout += data.toString()) },
+          ignoreReturnCode: true,
+        });
+        if (!stdout) {
+          // No Parent Commit
+          core.info(
+            "No Parent Commit To Reset To; cleaning working tree instead.",
+          );
+          await exec.exec("git", ["clean", "-fd"]);
+          await exec.exec("git", ["checkout", "--", "."]);
+        } else {
+          // Parent Commit
+          await exec.exec("git", ["reset", "--hard", "HEAD~1"]);
+        }
+        core.info("Reset Completed.");
+      } catch (err: any) {
+        core.setFailed(
+          `Failed To Reset branch Changes: ${err?.message || String(err)}`,
+        );
+      }
     }
 
     // 3. Set Output Values
-    core.setOutput("runner_name: ", username);
     core.setOutput("time", new Date().toTimeString());
+    core.setOutput("runner_name: ", username);
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }

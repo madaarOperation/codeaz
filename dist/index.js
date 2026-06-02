@@ -31500,14 +31500,14 @@ var exec_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
  */
 function exec_exec(commandLine, args, options) {
     return exec_awaiter(this, void 0, void 0, function* () {
-        const commandArgs = tr.argStringToArray(commandLine);
+        const commandArgs = argStringToArray(commandLine);
         if (commandArgs.length === 0) {
             throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
         }
         // Path to tool to execute should be first arg
         const toolPath = commandArgs[0];
         args = commandArgs.slice(1).concat(args || []);
-        const runner = new tr.ToolRunner(toolPath, args, options);
+        const runner = new ToolRunner(toolPath, args, options);
         return runner.exec();
     });
 }
@@ -36261,6 +36261,7 @@ function getOctokit(token, options, ...additionalPlugins) {
 // =================================================== #
 
 
+
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (input) => {
     const codeOwners = {};
@@ -36301,18 +36302,39 @@ async function run() {
         const teamMembers = codeOwner["tm"] || [];
         const opsMembers = codeOwner["ops"] || [];
         const isTeamMember = teamMembers.some((member) => member.toLowerCase() == username.toLowerCase());
-        const isOpsMembers = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
+        const isOpsMember = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
         const branchName = github_context.ref.replace("refs/heads/", "");
-        if (isTeamMember || isOpsMembers) {
+        if (isTeamMember || isOpsMember) {
             info(`Access Granted: ${username} is a member of our development team at ${branchName}`);
         }
         else {
             warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
             info(`Resetting Branch '${branchName}' Changes`);
+            try {
+                let stdout = "";
+                await exec_exec("git", ["rev-parse", "--verify", "HEAD^"], {
+                    listeners: { stdout: (data) => (stdout += data.toString()) },
+                    ignoreReturnCode: true,
+                });
+                if (!stdout) {
+                    // No Parent Commit
+                    info("No Parent Commit To Reset To; cleaning working tree instead.");
+                    await exec_exec("git", ["clean", "-fd"]);
+                    await exec_exec("git", ["checkout", "--", "."]);
+                }
+                else {
+                    // Parent Commit
+                    await exec_exec("git", ["reset", "--hard", "HEAD~1"]);
+                }
+                info("Reset Completed.");
+            }
+            catch (err) {
+                setFailed(`Failed To Reset branch Changes: ${err?.message || String(err)}`);
+            }
         }
         // 3. Set Output Values
-        setOutput("runner_name: ", username);
         setOutput("time", new Date().toTimeString());
+        setOutput("runner_name: ", username);
     }
     catch (error) {
         if (error instanceof Error)
