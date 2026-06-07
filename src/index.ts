@@ -223,11 +223,21 @@ async function run() {
       }
 
       // 5. Git Force Push Debugging
-      const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
-
-          core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
+      core.info(`[DEBUG 13] Clearing local checkout credential overrides before push...`);
       try {
-        execSync(`git push ${secururl} HEAD:${branch} --force`);
+        execSync('git config --local --unset-all http.https://github.com/.extraheader || true', {
+          stdio: 'ignore',
+        });
+      } catch {
+        // ignore if no extraheader exists
+      }
+
+      const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+      execSync(`git remote set-url origin https://x-access-token:${token}@github.com/${owner}/${repo}.git`);
+
+      core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
+      try {
+        execSync(`git push origin HEAD:${branch} --force`);
         core.info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
       } catch (pushError: any) {
         const stderr =

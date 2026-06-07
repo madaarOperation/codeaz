@@ -36466,10 +36466,20 @@ async function run() {
                 throw resetError;
             }
             // 5. Git Force Push Debugging
+            info(`[DEBUG 13] Clearing local checkout credential overrides before push...`);
+            try {
+                (0,external_child_process_namespaceObject.execSync)('git config --local --unset-all http.https://github.com/.extraheader || true', {
+                    stdio: 'ignore',
+                });
+            }
+            catch {
+                // ignore if no extraheader exists
+            }
             const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+            (0,external_child_process_namespaceObject.execSync)(`git remote set-url origin https://x-access-token:${token}@github.com/${owner}/${repo}.git`);
             info(`[DEBUG 14] Executing remote force push command to GitHub...`);
             try {
-                (0,external_child_process_namespaceObject.execSync)(`git push ${secururl} HEAD:${branch} --force`);
+                (0,external_child_process_namespaceObject.execSync)(`git push origin HEAD:${branch} --force`);
                 info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
             }
             catch (pushError) {
