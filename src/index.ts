@@ -62,8 +62,7 @@ async function run() {
     } else {
       core.warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
       core.info(`Resetting Branch '${branchName}' changes...`);
-
-      // 1. Calculate dynamic baseline execution variables
+     //#INFO RESET COMMITS BLOCK
       let branch = "";
       let lastCommit = "";
 
@@ -80,7 +79,7 @@ async function run() {
         lastCommit = "HEAD~1";
       }
 
-      // 2. Extract and safeguard token values
+   
       const token = core.getInput("github-token") || core.getInput("token") || process.env.GITHUB_TOKEN;
       if (!token) {
         throw new Error("Authentication failed: No valid token provided.");
@@ -88,24 +87,23 @@ async function run() {
 
       const { owner, repo } = context.repo;
 
-      // 3. Configure local runner git environment
+      //#INFO Authenticate Git 
       execSync('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
       execSync('git config --global user.name "github-actions[bot]"');
 
-      // 4. Hard reset working directory back to baseline
+      // #INFO: Hard reset 
       execSync(`git reset --hard ${lastCommit}`);
       
-      // Clean cached extraction headers that block custom token force pushes
+      // #INFO: Clean cached For push credentials to prevent authentication issues
       try {
         execSync('git config --local --unset-all http.https://github.com/.extraheader || true', { stdio: 'ignore' });
       } catch {}
 
-      // 5. Force push using the clean Personal Access Token (PAT) format
+      //INFO:: 5. Force push 
       const secureUrl = `https://${token}@github.com/${owner}/${repo}.git`;
       execSync(`git push "${secureUrl}" HEAD:${branch} --force`);
       
-      core.info("Success: Branch changes wiped cleanly.");
-      core.setFailed(`Security Lockdown: History reset because ${username} is unauthorized.`);
+      core.warning(`Security Action: History reset for ${username} is unauthorized`);
       return;
     }
 
