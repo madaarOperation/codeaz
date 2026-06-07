@@ -119,6 +119,10 @@ async function run() {
       const { owner, repo } = context.repo;
       core.info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
 
+      const isLikelyPAT = (value: string): boolean => {
+        return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
+      };
+
       // 2.5 Detect workflow file changes and warn if token may be insufficient
       try {
         const diffOutput = execSync(`git diff --name-only ${lastCommit} HEAD`, {
@@ -132,15 +136,17 @@ async function run() {
           path.startsWith(".github/workflows/"),
         );
 
-        if (workflowFiles.length > 0 && tokenSource === "GITHUB_TOKEN env") {
-          core.error(
-            `Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`,
+        if (workflowFiles.length > 0) {
+          core.info(
+            `[DEBUG 6-WARN] Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`,
           );
-          core.error(
-            "GitHub may refuse a force-push that modifies workflow files when using GITHUB_TOKEN. Use a personal access token via the github-token input.",
-          );
-          throw new Error(
-            "Workflow file changes require a PAT with repo and workflow permissions.",
+          if (!isLikelyPAT(token)) {
+            throw new Error(
+              "Workflow file changes detected. Your token does not appear to be a PAT with workflows permission. Provide a personal access token via github-token.",
+            );
+          }
+          core.info(
+            "Workflow files are included in the rollback range, and the provided token appears to be a PAT. Continuing with push.",
           );
         }
       } catch (diffError: any) {
@@ -174,6 +180,23 @@ async function run() {
         execSync(`git push ${secururl} HEAD:${branch} --force`);
         core.info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
       } catch (pushError: any) {
+        const stderr =
+          pushError.stderr instanceof Buffer
+            ? pushError.stderr.toString("utf8")
+            : typeof pushError.stderr === "string"
+            ? pushError.stderr
+            : "";
+        if (stderr.includes("without `workflows` permission")) {
+          core.error(
+            "GitHub rejected the push because the token does not have workflows permission.",
+          );
+          core.error(
+            "Use a personal access token with repo and workflows permissions, not the default GITHUB_TOKEN.",
+          );
+          throw new Error(
+            "Push failed: token lacks workflows permission for workflow file update.",
+          );
+        }
         core.info(`[DEBUG 14-CRITICAL_FAIL] Git force push rejected or crashed! Error message: ${pushError.message}`);
         throw pushError;
       }
