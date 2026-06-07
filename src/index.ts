@@ -90,11 +90,11 @@ async function run() {
       const token = process.env.GITHUB_TOKEN|| core.getInput("token");
       if (!token) throw new Error("TOKEN NOT GOVEN");
       const {owner , repo} = context.repo;
-      execSync('git config --global user.email "github-actions[bot]"');
-      execSync('git config --global user.name "github-actions[bot]@://github.com"');
+      execSync('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
+      execSync('git config --global user.name "github-actions[bot]"');
       //INFO :: RESET LAST COMMIT 
       execSync(`git reset --hard ${lastCommit}`);
-      const secururl = `https://access-token:${token}@github.com/${owner}/${repo}.git`;
+      const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
       execSync(`git push ${secururl} HEAD:${branch} --force`);
 
     }
