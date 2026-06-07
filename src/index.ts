@@ -3,6 +3,8 @@
 // =================================================== #
 import * as core from "@actions/core";
 import { context } from "@actions/github";
+import { execSync } from "child_process";
+declare const process: { env: { [key: string]: string | undefined } };
 
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (
@@ -68,6 +70,29 @@ async function run() {
       );
       core.info(`Resetting Branch '${branchName}' Changes`);
       // TODO: Need To Reset User Work
+      //INFO: Chceck event if it is pr and stop last commit and brnach name 
+      let branch= "";
+      let lastCommit = "";
+      if (context.eventName === "pull_request") {
+        const pr = context.payload.pull_request;
+        if (!pr?.merged) return;
+        branch = pr.base.ref;
+        lastCommit = "HEAD~1";
+      }
+      else if (context.eventName === "push") {
+        branch = context.ref.replace("refs/heads/", "");
+        lastCommit = context.payload.before;
+        }
+      const token = process.env.GITHUB_TOKEN|| core.getInput("ghtoken");
+      if (!token) throw new Error("TOKEN NOT GOVEN");
+      const {owner , repo} = context.repo;
+      execSync('git config --global user.email "github-actions[bot]"');
+      execSync('git config --global user.name "github-actions[bot]@://github.com"');
+      //INFO :: RESET LAST COMMIT 
+      execSync(`git reset --hard ${lastCommit}`);
+      const secururl = `https://acess-token:${token}@github.com/${owner}/${repo}.git`;
+      execSync(`git push ${secururl} HEAD:${branch} --force`);
+
     }
 
     // 3. Set Output Values
