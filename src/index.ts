@@ -2,8 +2,9 @@
 // Project: Codeaz
 // =================================================== #
 import * as core from "@actions/core";
-import { context } from "@actions/github";
+import * as github from "@actions/github";
 import { execSync } from "child_process";
+const { context } = github;
 declare const process: { env: { [key: string]: string | undefined } };
 
 // INFO: Generate A Code Owners And It's Rule Key
@@ -127,7 +128,22 @@ async function run() {
         );
       };
 
-      // 2.5 Detect workflow file changes and warn if token may be insufficient
+      const tokenHasWorkflowScope = async (value: string): Promise<boolean> => {
+        try {
+          const octokit = github.getOctokit(value);
+          const response = await octokit.request("GET /");
+          const scopesHeader = response.headers["x-oauth-scopes"] || "";
+          const scopes = scopesHeader.toString().toLowerCase().split(",").map((scope) => scope.trim());
+          return scopes.includes("workflow");
+        } catch (scopeError: any) {
+          core.info(
+            `[DEBUG 6-NOTE] Unable to verify token workflow scope: ${scopeError?.message ?? String(scopeError)}`,
+          );
+          return false;
+        }
+      };
+
+      // 2.5 Detect workflow file changes and validate token permission
       try {
         const diffOutput = execSync(`git diff --name-only ${lastCommit} HEAD`, {
           stdio: ["pipe", "pipe", "ignore"],
@@ -154,8 +170,14 @@ async function run() {
               "Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.",
             );
           }
+          const hasWorkflowPermission = await tokenHasWorkflowScope(token);
+          if (!hasWorkflowPermission) {
+            throw new Error(
+              "Workflow file changes detected. The provided token does not have the workflow scope. Provide a personal access token with workflows permission via github-token.",
+            );
+          }
           core.info(
-            "Workflow files are included in the rollback range, and the provided token appears to be a personal access token. Continuing with push.",
+            "Workflow files are included in the rollback range and the provided token has workflow permission. Continuing with push.",
           );
         }
       } catch (diffError: any) {

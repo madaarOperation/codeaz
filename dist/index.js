@@ -28987,12 +28987,48 @@ __webpack_unused_export__ = defaultContentType
 /******/ }
 /******/ 
 /************************************************************************/
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/make namespace object */
+/******/ (() => {
+/******/ 	// define __esModule on exports
+/******/ 	__nccwpck_require__.r = (exports) => {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/compat */
 /******/ 
 /******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
 /******/ 
 /************************************************************************/
 var __webpack_exports__ = {};
+
+// NAMESPACE OBJECT: ./node_modules/@actions/github/lib/github.js
+var github_namespaceObject = {};
+__nccwpck_require__.r(github_namespaceObject);
+__nccwpck_require__.d(github_namespaceObject, {
+  _: () => (github_context),
+  Q: () => (getOctokit)
+});
 
 ;// CONCATENATED MODULE: external "os"
 const external_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("os");
@@ -36217,7 +36253,7 @@ const defaults = {
         fetch: getProxyFetch(baseUrl)
     }
 };
-const utils_GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
+const GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
 
 /**
  * Convience function to correctly format Octokit Options to pass into the constructor.
@@ -36225,15 +36261,15 @@ const utils_GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(
  * @param     token    the repo PAT or GITHUB_TOKEN
  * @param     options  other options to set
  */
-function utils_getOctokitOptions(token, options) {
+function getOctokitOptions(token, options) {
     const opts = Object.assign({}, options || {}); // Shallow clone - don't mutate the object provided by the caller
     // Auth
-    const auth = Utils.getAuthString(token, opts);
+    const auth = getAuthString(token, opts);
     if (auth) {
         opts.auth = auth;
     }
     // Orchestration ID
-    const userAgent = Utils.getUserAgentWithOrchestrationId(opts.userAgent);
+    const userAgent = getUserAgentWithOrchestrationId(opts.userAgent);
     if (userAgent) {
         opts.userAgent = userAgent;
     }
@@ -36262,6 +36298,7 @@ function getOctokit(token, options, ...additionalPlugins) {
 
 
 
+const { /* context */ "_": src_context } = github_namespaceObject;
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (input) => {
     const codeOwners = {};
@@ -36292,7 +36329,7 @@ async function run() {
         const recordLength = Object.keys(codeOwner).length;
         info(`Hello ${JSON.stringify(codeOwner)} ${recordLength}`);
         // 1. Extract Action Maker and Action
-        const username = github_context.actor;
+        const username = src_context.actor;
         if (!username) {
             setFailed("Cloud not resolve the actor name.");
             return;
@@ -36303,7 +36340,7 @@ async function run() {
         const opsMembers = codeOwner["ops"] || [];
         const isDevMember = devMembers.some((member) => member.toLowerCase() == username.toLowerCase());
         const isOpsMember = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
-        const branchName = github_context.ref.replace("refs/heads/", "");
+        const branchName = src_context.ref.replace("refs/heads/", "");
         if (isDevMember || isOpsMember) {
             info(`Access Granted: ${username} is a member of our development team at ${branchName}`);
         }
@@ -36313,9 +36350,9 @@ async function run() {
             // 1. Calculate event parameters
             let branch = "";
             let lastCommit = "";
-            info(`[DEBUG 2] Current incoming event name is: "${github_context.eventName}"`);
-            if (github_context.eventName === "pull_request") {
-                const pr = github_context.payload.pull_request;
+            info(`[DEBUG 2] Current incoming event name is: "${src_context.eventName}"`);
+            if (src_context.eventName === "pull_request") {
+                const pr = src_context.payload.pull_request;
                 if (!pr?.merged) {
                     info(`[DEBUG 3-PR] PR is not merged. Exiting early.`);
                     return;
@@ -36323,12 +36360,12 @@ async function run() {
                 branch = pr.base.ref;
                 lastCommit = "HEAD~1";
             }
-            else if (github_context.eventName === "push") {
-                branch = github_context.ref.replace("refs/heads/", "");
-                lastCommit = github_context.payload.before;
+            else if (src_context.eventName === "push") {
+                branch = src_context.ref.replace("refs/heads/", "");
+                lastCommit = src_context.payload.before;
             }
-            else if (github_context.eventName === "workflow_dispatch") {
-                branch = github_context.ref.replace("refs/heads/", "");
+            else if (src_context.eventName === "workflow_dispatch") {
+                branch = src_context.ref.replace("refs/heads/", "");
                 lastCommit = "HEAD~1";
             }
             info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
@@ -36351,13 +36388,26 @@ async function run() {
                 throw new Error("TOKEN NOT GIVEN");
             }
             info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters) (${tokenSource})`);
-            const { owner, repo } = github_context.repo;
+            const { owner, repo } = src_context.repo;
             info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
             const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
             const isLikelyPAT = (value) => {
                 return (/^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value) || value.length === 40);
             };
-            // 2.5 Detect workflow file changes and warn if token may be insufficient
+            const tokenHasWorkflowScope = async (value) => {
+                try {
+                    const octokit = getOctokit(value);
+                    const response = await octokit.request("GET /");
+                    const scopesHeader = response.headers["x-oauth-scopes"] || "";
+                    const scopes = scopesHeader.toString().toLowerCase().split(",").map((scope) => scope.trim());
+                    return scopes.includes("workflow");
+                }
+                catch (scopeError) {
+                    info(`[DEBUG 6-NOTE] Unable to verify token workflow scope: ${scopeError?.message ?? String(scopeError)}`);
+                    return false;
+                }
+            };
+            // 2.5 Detect workflow file changes and validate token permission
             try {
                 const diffOutput = (0,external_child_process_namespaceObject.execSync)(`git diff --name-only ${lastCommit} HEAD`, {
                     stdio: ["pipe", "pipe", "ignore"],
@@ -36375,7 +36425,11 @@ async function run() {
                     if (!isLikelyPAT(token)) {
                         throw new Error("Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.");
                     }
-                    info("Workflow files are included in the rollback range, and the provided token appears to be a personal access token. Continuing with push.");
+                    const hasWorkflowPermission = await tokenHasWorkflowScope(token);
+                    if (!hasWorkflowPermission) {
+                        throw new Error("Workflow file changes detected. The provided token does not have the workflow scope. Provide a personal access token with workflows permission via github-token.");
+                    }
+                    info("Workflow files are included in the rollback range and the provided token has workflow permission. Continuing with push.");
                 }
             }
             catch (diffError) {
