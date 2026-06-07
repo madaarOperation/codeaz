@@ -36391,20 +36391,31 @@ async function run() {
             const { owner, repo } = src_context.repo;
             info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
             const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
+            const isExplicitPAT = (value) => {
+                return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
+            };
             const isLikelyPAT = (value) => {
-                return (/^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value) || value.length === 40);
+                return isExplicitPAT(value) || value.length === 40;
             };
             const tokenHasWorkflowScope = async (value) => {
                 try {
                     const octokit = getOctokit(value);
                     const response = await octokit.request("GET /");
                     const scopesHeader = response.headers["x-oauth-scopes"] || "";
-                    const scopes = scopesHeader.toString().toLowerCase().split(",").map((scope) => scope.trim());
-                    return scopes.includes("workflow");
+                    const scopes = scopesHeader
+                        .toString()
+                        .toLowerCase()
+                        .split(",")
+                        .map((scope) => scope.trim())
+                        .filter(Boolean);
+                    return {
+                        scopes: scopesHeader.toString(),
+                        hasWorkflowPermission: scopes.includes("workflow"),
+                    };
                 }
                 catch (scopeError) {
                     info(`[DEBUG 6-NOTE] Unable to verify token workflow scope: ${scopeError?.message ?? String(scopeError)}`);
-                    return false;
+                    return { scopes: "", hasWorkflowPermission: false };
                 }
             };
             // 2.5 Detect workflow file changes and validate token permission
@@ -36425,9 +36436,13 @@ async function run() {
                     if (!isLikelyPAT(token)) {
                         throw new Error("Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.");
                     }
-                    const hasWorkflowPermission = await tokenHasWorkflowScope(token);
-                    if (!hasWorkflowPermission) {
-                        throw new Error("Workflow file changes detected. The provided token does not have the workflow scope. Provide a personal access token with workflows permission via github-token.");
+                    const workflowScope = await tokenHasWorkflowScope(token);
+                    info(`[DEBUG 6-NOTE] Token scope response: ${workflowScope.scopes || "none"}`);
+                    if (!workflowScope.hasWorkflowPermission) {
+                        throw new Error("Workflow file changes detected. The provided token does not have workflow permission. Provide a personal access token with workflows permission via github-token.");
+                    }
+                    if (!isExplicitPAT(token)) {
+                        info("The provided token appears to be a classic 40-character token. Ensure it is a personal access token with workflows permission, not an app token.");
                     }
                     info("Workflow files are included in the rollback range and the provided token has workflow permission. Continuing with push.");
                 }

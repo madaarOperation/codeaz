@@ -122,24 +122,35 @@ async function run() {
       core.info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
 
       const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
+      const isExplicitPAT = (value: string): boolean => {
+        return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
+      };
       const isLikelyPAT = (value: string): boolean => {
-        return (
-          /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value) || value.length === 40
-        );
+        return isExplicitPAT(value) || value.length === 40;
       };
 
-      const tokenHasWorkflowScope = async (value: string): Promise<boolean> => {
+      const tokenHasWorkflowScope = async (
+        value: string,
+      ): Promise<{ scopes: string; hasWorkflowPermission: boolean }> => {
         try {
           const octokit = github.getOctokit(value);
           const response = await octokit.request("GET /");
           const scopesHeader = response.headers["x-oauth-scopes"] || "";
-          const scopes = scopesHeader.toString().toLowerCase().split(",").map((scope) => scope.trim());
-          return scopes.includes("workflow");
+          const scopes = scopesHeader
+            .toString()
+            .toLowerCase()
+            .split(",")
+            .map((scope) => scope.trim())
+            .filter(Boolean);
+          return {
+            scopes: scopesHeader.toString(),
+            hasWorkflowPermission: scopes.includes("workflow"),
+          };
         } catch (scopeError: any) {
           core.info(
             `[DEBUG 6-NOTE] Unable to verify token workflow scope: ${scopeError?.message ?? String(scopeError)}`,
           );
-          return false;
+          return { scopes: "", hasWorkflowPermission: false };
         }
       };
 
@@ -170,10 +181,18 @@ async function run() {
               "Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.",
             );
           }
-          const hasWorkflowPermission = await tokenHasWorkflowScope(token);
-          if (!hasWorkflowPermission) {
+          const workflowScope = await tokenHasWorkflowScope(token);
+          core.info(
+            `[DEBUG 6-NOTE] Token scope response: ${workflowScope.scopes || "none"}`,
+          );
+          if (!workflowScope.hasWorkflowPermission) {
             throw new Error(
-              "Workflow file changes detected. The provided token does not have the workflow scope. Provide a personal access token with workflows permission via github-token.",
+              "Workflow file changes detected. The provided token does not have workflow permission. Provide a personal access token with workflows permission via github-token.",
+            );
+          }
+          if (!isExplicitPAT(token)) {
+            core.info(
+              "The provided token appears to be a classic 40-character token. Ensure it is a personal access token with workflows permission, not an app token.",
             );
           }
           core.info(
