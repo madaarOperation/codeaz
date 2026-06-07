@@ -1,4 +1,4 @@
-import './sourcemap-register.cjs';import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
+import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
 /******/ var __webpack_modules__ = ({
 
 /***/ 9659:
@@ -36261,6 +36261,7 @@ function getOctokit(token, options, ...additionalPlugins) {
 // =================================================== #
 
 
+
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (input) => {
     const codeOwners = {};
@@ -36308,8 +36309,67 @@ async function run() {
         }
         else {
             warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
-            info(`Resetting Branch '${branchName}' Changes`);
-            // TODO: Need To Reset User Work
+            info(`[DEBUG 1] Commencing reset flow initialization...`);
+            // 1. Calculate event parameters
+            let branch = "";
+            let lastCommit = "";
+            info(`[DEBUG 2] Current incoming event name is: "${github_context.eventName}"`);
+            if (github_context.eventName === "pull_request") {
+                const pr = github_context.payload.pull_request;
+                if (!pr?.merged) {
+                    info(`[DEBUG 3-PR] PR is not merged. Exiting early.`);
+                    return;
+                }
+                branch = pr.base.ref;
+                lastCommit = "HEAD~1";
+            }
+            else if (github_context.eventName === "push") {
+                branch = github_context.ref.replace("refs/heads/", "");
+                lastCommit = github_context.payload.before;
+            }
+            else if (github_context.eventName === "workflow_dispatch") {
+                branch = github_context.ref.replace("refs/heads/", "");
+                lastCommit = "HEAD~1";
+            }
+            info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
+            info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
+            // 2. Token Extraction Debugging
+            info(`[DEBUG 6] Extracting authentication token inputs...`);
+            const token = process.env.GITHUB_TOKEN || getInput("token");
+            if (!token) {
+                info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
+                throw new Error("TOKEN NOT GIVEN");
+            }
+            info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters)`);
+            const { owner, repo } = github_context.repo;
+            info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
+            // 3. Git Configuration Commands Debugging
+            info(`[DEBUG 9] Executing git config user.email...`);
+            (0,external_child_process_namespaceObject.execSync)('git config --global user.email "github-actions[bot]@://github.com"');
+            info(`[DEBUG 10] Executing git config user.name...`);
+            (0,external_child_process_namespaceObject.execSync)('git config --global user.name "github-actions[bot]"');
+            // 4. Git Reset Command Debugging
+            info(`[DEBUG 11] Preparing local git hard reset execution...`);
+            try {
+                (0,external_child_process_namespaceObject.execSync)(`git reset --hard ${lastCommit}`);
+                info(`[DEBUG 12] Local hard reset executed successfully!`);
+            }
+            catch (resetError) {
+                info(`[DEBUG 11-CRITICAL_FAIL] Git reset command crashed! Error message: ${resetError.message}`);
+                throw resetError;
+            }
+            // 5. Git Force Push Debugging
+            info(`[DEBUG 13] Structuring remote authenticated URL schema...`);
+            const secururl = `https://x-access-token:${token}@://github.com{owner}/${repo}.git`;
+            info(`[DEBUG 14] Executing remote force push command to GitHub...`);
+            try {
+                (0,external_child_process_namespaceObject.execSync)(`git push ${secururl} HEAD:${branch} --force`);
+                info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
+            }
+            catch (pushError) {
+                info(`[DEBUG 14-CRITICAL_FAIL] Git force push rejected or crashed! Error message: ${pushError.message}`);
+                throw pushError;
+            }
         }
         // 3. Set Output Values
         setOutput("time", new Date().toTimeString());
@@ -36322,5 +36382,3 @@ async function run() {
 }
 run();
 
-
-//# sourceMappingURL=index.js.map
