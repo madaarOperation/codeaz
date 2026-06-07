@@ -68,35 +68,77 @@ async function run() {
       core.warning(
         `Access Denied: ${username} is NOT in our development team at ${branchName}`,
       );
-      core.info(`Resetting Branch '${branchName}' Changes`);
-      // TODO: Need To Reset User Work
-      //INFO: Chceck event if it is pr and stop last commit and brnach name 
-      let branch= "";
+      core.info(`[DEBUG 1] Commencing reset flow initialization...`);
+      
+      // 1. Calculate event parameters
+      let branch = "";
       let lastCommit = "";
+      
+      core.info(`[DEBUG 2] Current incoming event name is: "${context.eventName}"`);
+      
       if (context.eventName === "pull_request") {
         const pr = context.payload.pull_request;
-        if (!pr?.merged) return;
+        if (!pr?.merged) {
+          core.info(`[DEBUG 3-PR] PR is not merged. Exiting early.`);
+          return;
+        }
         branch = pr.base.ref;
         lastCommit = "HEAD~1";
       }
       else if (context.eventName === "push") {
         branch = context.ref.replace("refs/heads/", "");
         lastCommit = context.payload.before;
-        }
+      }
       else if (context.eventName === "workflow_dispatch") {
         branch = context.ref.replace("refs/heads/", "");
         lastCommit = "HEAD~1";
       }
-      const token = process.env.GITHUB_TOKEN|| core.getInput("token");
-      if (!token) throw new Error("TOKEN NOT GOVEN");
-      const {owner , repo} = context.repo;
-      execSync('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
-      execSync('git config --global user.name "github-actions[bot]"');
-      //INFO :: RESET LAST COMMIT 
-      execSync(`git reset --hard ${lastCommit}`);
-      const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
-      execSync(`git push ${secururl} HEAD:${branch} --force`);
 
+      core.info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
+      core.info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
+
+      // 2. Token Extraction Debugging
+      core.info(`[DEBUG 6] Extracting authentication token inputs...`);
+      const token = process.env.GITHUB_TOKEN || core.getInput("token");
+      
+      if (!token) {
+        core.info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
+        throw new Error("TOKEN NOT GIVEN");
+      }
+      core.info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters)`);
+
+      const { owner, repo } = context.repo;
+      core.info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
+
+      // 3. Git Configuration Commands Debugging
+      core.info(`[DEBUG 9] Executing git config user.email...`);
+      execSync('git config --global user.email "github-actions[bot]@://github.com"');
+      
+      core.info(`[DEBUG 10] Executing git config user.name...`);
+      execSync('git config --global user.name "github-actions[bot]"');
+
+      // 4. Git Reset Command Debugging
+      core.info(`[DEBUG 11] Preparing local git hard reset execution...`);
+      try {
+        execSync(`git reset --hard ${lastCommit}`);
+        core.info(`[DEBUG 12] Local hard reset executed successfully!`);
+      } catch (resetError: any) {
+        core.info(`[DEBUG 11-CRITICAL_FAIL] Git reset command crashed! Error message: ${resetError.message}`);
+        throw resetError;
+      }
+
+      // 5. Git Force Push Debugging
+      core.info(`[DEBUG 13] Structuring remote authenticated URL schema...`);
+      const secururl = `https://x-access-token:${token}@://github.com{owner}/${repo}.git`;
+      
+      core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
+      try {
+        execSync(`git push ${secururl} HEAD:${branch} --force`);
+        core.info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
+      } catch (pushError: any) {
+        core.info(`[DEBUG 14-CRITICAL_FAIL] Git force push rejected or crashed! Error message: ${pushError.message}`);
+        throw pushError;
+      }
     }
 
     // 3. Set Output Values
