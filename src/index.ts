@@ -99,8 +99,8 @@ async function run() {
 
       // 2. Token Extraction Debugging
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
-      const token = process.env.GITHUB_TOKEN || core.getInput("token");
-      
+      const token = process.env.GITHUB_TOKEN || core.getInput("github-token");
+
       if (!token) {
         core.info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
         throw new Error("TOKEN NOT GIVEN");
@@ -112,7 +112,7 @@ async function run() {
 
       // 3. Git Configuration Commands Debugging
       core.info(`[DEBUG 9] Executing git config user.email...`);
-      execSync('git config --global user.email "github-actions[bot]@://github.com"');
+      execSync('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
       
       core.info(`[DEBUG 10] Executing git config user.name...`);
       execSync('git config --global user.name "github-actions[bot]"');
@@ -128,10 +128,9 @@ async function run() {
       }
 
       // 5. Git Force Push Debugging
-       const secururl = `https://x-access-token:${token}@://github.com{owner}/${repo}.git`;
+      const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
 
-      
-      core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
+          core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
       try {
         execSync(`git push ${secururl} HEAD:${branch} --force`);
         core.info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);

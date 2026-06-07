@@ -9,7 +9,7 @@ inputs:
     required: true
     default: ""
   github-token:
-    description: github token to can reset any changes out code owners
+    description: GitHub token used to reset unauthorized changes and enforce code owner rules
     required: true
     default: ""
 outputs:

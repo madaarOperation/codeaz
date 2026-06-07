@@ -5,6 +5,7 @@ name: Test Codeaz Action
 on:
   push:
     branches: [main]
+permissions: write-all
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,3 +19,6 @@ jobs:
         with:
           code-owner: vp=hassan,tl=negam,dvr=ali
           github-token: ""
+          # If this action needs to update workflow files, provide a PAT
+          # with repo + workflow scopes instead of relying on GITHUB_TOKEN.
+          # github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
