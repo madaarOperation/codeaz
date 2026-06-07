@@ -97,7 +97,7 @@ async function run() {
       core.info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
       core.info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
 
-      // 2. Token Extraction Debugging error
+      // 2. Token Extraction Debugging
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
       const token = process.env.GITHUB_TOKEN || core.getInput("token");
       
@@ -128,8 +128,8 @@ async function run() {
       }
 
       // 5. Git Force Push Debugging
-      core.info(`[DEBUG 13] Structuring remote authenticated URL schema...`);
-      const secururl = `https://x-access-token:${token}@://github.com{owner}/${repo}.git`;
+       const secururl = `https://x-access-token:${token}@://github.com{owner}/${repo}.git`;
+
       
       core.info(`[DEBUG 14] Executing remote force push command to GitHub...`);
       try {
