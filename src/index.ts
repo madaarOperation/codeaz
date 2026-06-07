@@ -97,7 +97,7 @@ async function run() {
       core.info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
       core.info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
 
-      // 2. Token Extraction Debugging
+      // 2. Token Extraction Debugging error
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
       const token = process.env.GITHUB_TOKEN || core.getInput("token");
       
