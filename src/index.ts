@@ -83,6 +83,10 @@ async function run() {
         branch = context.ref.replace("refs/heads/", "");
         lastCommit = context.payload.before;
         }
+      else if (context.eventName === "workflow_dispatch") {
+        branch = context.ref.replace("refs/heads/", "");
+        lastCommit = "HEAD~1";
+      }
       const token = process.env.GITHUB_TOKEN|| core.getInput("ghtoken");
       if (!token) throw new Error("TOKEN NOT GOVEN");
       const {owner , repo} = context.repo;
