@@ -104,12 +104,14 @@ async function run() {
       execSync(`git push "${secureUrl}" HEAD:${branch} --force`);
       
       core.warning(`Security Action: History reset for ${username} is unauthorized`);
+      core.setOutput("status", "reset");
       return;
     }
 
     // Set Output Values
     core.setOutput("time", new Date().toTimeString());
-    core.setOutput("runner_name: ", username);
+    core.setOutput("runner_name", username);
+    core.setOutput("status", "authorized");
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }
