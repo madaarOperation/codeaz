@@ -9,7 +9,7 @@ inputs:
     required: true
     default: ""
   github-token:
-    description: GitHub token used to reset unauthorized changes and enforce code owner rules. For workflow file rollback, use a PAT with repo + workflows permissions; do not pass the default GITHUB_TOKEN.
+    description: GitHub token used to reset unauthorized changes and enforce code owner rules
     required: false
     default: ""
   token:

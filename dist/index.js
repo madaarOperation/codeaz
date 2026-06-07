@@ -29026,8 +29026,7 @@ var __webpack_exports__ = {};
 var github_namespaceObject = {};
 __nccwpck_require__.r(github_namespaceObject);
 __nccwpck_require__.d(github_namespaceObject, {
-  _: () => (github_context),
-  Q: () => (getOctokit)
+  _: () => (github_context)
 });
 
 ;// CONCATENATED MODULE: external "os"
@@ -36253,7 +36252,7 @@ const defaults = {
         fetch: getProxyFetch(baseUrl)
     }
 };
-const GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
+const utils_GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
 
 /**
  * Convience function to correctly format Octokit Options to pass into the constructor.
@@ -36261,15 +36260,15 @@ const GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaul
  * @param     token    the repo PAT or GITHUB_TOKEN
  * @param     options  other options to set
  */
-function getOctokitOptions(token, options) {
+function utils_getOctokitOptions(token, options) {
     const opts = Object.assign({}, options || {}); // Shallow clone - don't mutate the object provided by the caller
     // Auth
-    const auth = getAuthString(token, opts);
+    const auth = Utils.getAuthString(token, opts);
     if (auth) {
         opts.auth = auth;
     }
     // Orchestration ID
-    const userAgent = getUserAgentWithOrchestrationId(opts.userAgent);
+    const userAgent = Utils.getUserAgentWithOrchestrationId(opts.userAgent);
     if (userAgent) {
         opts.userAgent = userAgent;
     }
@@ -36326,37 +36325,31 @@ const parseCodeOwner = (input) => {
 async function run() {
     try {
         const codeOwner = parseCodeOwner(getInput("code-owner"));
-        const recordLength = Object.keys(codeOwner).length;
-        info(`Hello ${JSON.stringify(codeOwner)} ${recordLength}`);
-        // 1. Extract Action Maker and Action
         const username = src_context.actor;
         if (!username) {
-            setFailed("Cloud not resolve the actor name.");
+            setFailed("Could not resolve the actor name.");
             return;
         }
-        info(`Successfully extract runner name: ${username}`);
-        // 2. Check Action Runner Permission
+        info(`Successfully extracted runner name: ${username}`);
+        // Check Action Runner Permission
         const devMembers = codeOwner["dev"] || [];
         const opsMembers = codeOwner["ops"] || [];
-        const isDevMember = devMembers.some((member) => member.toLowerCase() == username.toLowerCase());
-        const isOpsMember = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
+        const isDevMember = devMembers.some((member) => member.toLowerCase() === username.toLowerCase());
+        const isOpsMember = opsMembers.some((member) => member.toLowerCase() === username.toLowerCase());
         const branchName = src_context.ref.replace("refs/heads/", "");
         if (isDevMember || isOpsMember) {
             info(`Access Granted: ${username} is a member of our development team at ${branchName}`);
         }
         else {
             warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
-            info(`[DEBUG 1] Commencing reset flow initialization...`);
-            // 1. Calculate event parameters
+            info(`Resetting Branch '${branchName}' changes...`);
+            // 1. Calculate dynamic baseline execution variables
             let branch = "";
             let lastCommit = "";
-            info(`[DEBUG 2] Current incoming event name is: "${src_context.eventName}"`);
             if (src_context.eventName === "pull_request") {
                 const pr = src_context.payload.pull_request;
-                if (!pr?.merged) {
-                    info(`[DEBUG 3-PR] PR is not merged. Exiting early.`);
+                if (!pr?.merged)
                     return;
-                }
                 branch = pr.base.ref;
                 lastCommit = "HEAD~1";
             }
@@ -36368,136 +36361,30 @@ async function run() {
                 branch = src_context.ref.replace("refs/heads/", "");
                 lastCommit = "HEAD~1";
             }
-            info(`[DEBUG 4] Target branch resolved to: "${branch}"`);
-            info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
-            // 2. Token Extraction Debugging
-            info(`[DEBUG 6] Extracting authentication token inputs...`);
-            const githubTokenInput = getInput("github-token");
-            const legacyTokenInput = getInput("token");
-            const envGithubToken = process.env.GITHUB_TOKEN;
-            const token = githubTokenInput || legacyTokenInput || envGithubToken;
-            const tokenSource = githubTokenInput
-                ? "github-token input"
-                : legacyTokenInput
-                    ? "token input"
-                    : envGithubToken
-                        ? "GITHUB_TOKEN env"
-                        : "none";
+            // 2. Extract and safeguard token values
+            const token = getInput("github-token") || getInput("token") || process.env.GITHUB_TOKEN;
             if (!token) {
-                info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
-                throw new Error("TOKEN NOT GIVEN");
+                throw new Error("Authentication failed: No valid token provided.");
             }
-            info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters) (${tokenSource})`);
             const { owner, repo } = src_context.repo;
-            info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
-            const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
-            const isExplicitPAT = (value) => {
-                return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
-            };
-            const isLikelyPAT = (value) => {
-                return isExplicitPAT(value) || value.length === 40;
-            };
-            const tokenHasWorkflowScope = async (value) => {
-                try {
-                    const octokit = getOctokit(value);
-                    const response = await octokit.request("GET /");
-                    const scopesHeader = response.headers["x-oauth-scopes"] || "";
-                    const scopes = scopesHeader
-                        .toString()
-                        .toLowerCase()
-                        .split(",")
-                        .map((scope) => scope.trim())
-                        .filter(Boolean);
-                    return {
-                        scopes: scopesHeader.toString(),
-                        hasWorkflowPermission: scopes.includes("workflow"),
-                    };
-                }
-                catch (scopeError) {
-                    info(`[DEBUG 6-NOTE] Unable to verify token workflow scope: ${scopeError?.message ?? String(scopeError)}`);
-                    return { scopes: "", hasWorkflowPermission: false };
-                }
-            };
-            // 2.5 Detect workflow file changes and validate token permission
-            try {
-                const diffOutput = (0,external_child_process_namespaceObject.execSync)(`git diff --name-only ${lastCommit} HEAD`, {
-                    stdio: ["pipe", "pipe", "ignore"],
-                }).toString("utf8");
-                const changedFiles = diffOutput
-                    .split("\n")
-                    .map((path) => path.trim())
-                    .filter(Boolean);
-                const workflowFiles = changedFiles.filter((path) => path.startsWith(".github/workflows/"));
-                if (workflowFiles.length > 0) {
-                    info(`[DEBUG 6-WARN] Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`);
-                    if (isDefaultGitHubToken) {
-                        throw new Error("Workflow file changes detected. The provided token is the default GITHUB_TOKEN, which cannot update workflow files. Provide a personal access token with repo and workflows permissions via github-token.");
-                    }
-                    if (!isLikelyPAT(token)) {
-                        throw new Error("Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.");
-                    }
-                    const workflowScope = await tokenHasWorkflowScope(token);
-                    info(`[DEBUG 6-NOTE] Token scope response: ${workflowScope.scopes || "none"}`);
-                    if (!workflowScope.hasWorkflowPermission) {
-                        throw new Error("Workflow file changes detected. The provided token does not have workflow permission. Provide a personal access token with workflows permission via github-token.");
-                    }
-                    if (!isExplicitPAT(token)) {
-                        info("The provided token appears to be a classic 40-character token. Ensure it is a personal access token with workflows permission, not an app token.");
-                    }
-                    info("Workflow files are included in the rollback range and the provided token has workflow permission. Continuing with push.");
-                }
-            }
-            catch (diffError) {
-                info(`[DEBUG 6-NOTE] Unable to inspect changed files for workflow updates: ${diffError.message}`);
-            }
-            // 3. Git Configuration Commands Debugging
-            info(`[DEBUG 9] Executing git config user.email...`);
+            // 3. Configure local runner git environment
             (0,external_child_process_namespaceObject.execSync)('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
-            info(`[DEBUG 10] Executing git config user.name...`);
             (0,external_child_process_namespaceObject.execSync)('git config --global user.name "github-actions[bot]"');
-            // 4. Git Reset Command Debugging
-            info(`[DEBUG 11] Preparing local git hard reset execution...`);
+            // 4. Hard reset working directory back to baseline
+            (0,external_child_process_namespaceObject.execSync)(`git reset --hard ${lastCommit}`);
+            // Clean cached extraction headers that block custom token force pushes
             try {
-                (0,external_child_process_namespaceObject.execSync)(`git reset --hard ${lastCommit}`);
-                info(`[DEBUG 12] Local hard reset executed successfully!`);
+                (0,external_child_process_namespaceObject.execSync)('git config --local --unset-all http.https://github.com/.extraheader || true', { stdio: 'ignore' });
             }
-            catch (resetError) {
-                info(`[DEBUG 11-CRITICAL_FAIL] Git reset command crashed! Error message: ${resetError.message}`);
-                throw resetError;
-            }
-            // 5. Git Force Push Debugging
-            info(`[DEBUG 13] Clearing local checkout credential overrides before push...`);
-            try {
-                (0,external_child_process_namespaceObject.execSync)('git config --local --unset-all http.https://github.com/.extraheader || true', {
-                    stdio: 'ignore',
-                });
-            }
-            catch {
-                // ignore if no extraheader exists
-            }
-            const secururl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
-            (0,external_child_process_namespaceObject.execSync)(`git remote set-url origin https://x-access-token:${token}@github.com/${owner}/${repo}.git`);
-            info(`[DEBUG 14] Executing remote force push command to GitHub...`);
-            try {
-                (0,external_child_process_namespaceObject.execSync)(`git push origin HEAD:${branch} --force`);
-                info(`[DEBUG 15] Remote force push completely successful! Changes wiped.`);
-            }
-            catch (pushError) {
-                const stderr = pushError.stderr instanceof Buffer
-                    ? pushError.stderr.toString("utf8")
-                    : typeof pushError.stderr === "string"
-                        ? pushError.stderr
-                        : "";
-                if (stderr.includes("without `workflows` permission")) {
-                    error("GitHub rejected the push because the token does not have workflows permission.");
-                    error("Use a personal access token with repo and workflows permissions, not the default GITHUB_TOKEN.");
-                    throw new Error("Push failed: token lacks workflows permission for workflow file update.");
-                }
-                info(`[DEBUG 14-CRITICAL_FAIL] Git force push rejected or crashed! Error message: ${pushError.message}`);
-                throw pushError;
-            }
+            catch { }
+            // 5. Force push using the clean Personal Access Token (PAT) format
+            const secureUrl = `https://${token}@github.com/${owner}/${repo}.git`;
+            (0,external_child_process_namespaceObject.execSync)(`git push "${secureUrl}" HEAD:${branch} --force`);
+            info("Success: Branch changes wiped cleanly.");
+            setFailed(`Security Lockdown: History reset because ${username} is unauthorized.`);
+            return;
         }
-        // 3. Set Output Values
+        // Set Output Values
         setOutput("time", new Date().toTimeString());
         setOutput("runner_name: ", username);
     }
