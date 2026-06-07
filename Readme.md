@@ -52,8 +52,10 @@ jobs:
         uses: your-username/codeaz@main
         with:
           code-owner: "user1, user2"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MY_PAT }}
 ```
+
+> Note: If rollback may include workflow files under `.github/workflows/`, do not use `GITHUB_TOKEN`. Use a personal access token with `repo` and `workflows` permissions.
 
 ## Development
 

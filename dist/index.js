@@ -36337,12 +36337,13 @@ async function run() {
             info(`[DEBUG 6] Extracting authentication token inputs...`);
             const githubTokenInput = getInput("github-token");
             const legacyTokenInput = getInput("token");
-            const token = githubTokenInput || legacyTokenInput || process.env.GITHUB_TOKEN;
+            const envGithubToken = process.env.GITHUB_TOKEN;
+            const token = githubTokenInput || legacyTokenInput || envGithubToken;
             const tokenSource = githubTokenInput
                 ? "github-token input"
                 : legacyTokenInput
                     ? "token input"
-                    : process.env.GITHUB_TOKEN
+                    : envGithubToken
                         ? "GITHUB_TOKEN env"
                         : "none";
             if (!token) {
@@ -36352,8 +36353,9 @@ async function run() {
             info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters) (${tokenSource})`);
             const { owner, repo } = github_context.repo;
             info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
+            const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
             const isLikelyPAT = (value) => {
-                return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
+                return (/^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value) || value.length === 40);
             };
             // 2.5 Detect workflow file changes and warn if token may be insufficient
             try {
@@ -36367,10 +36369,13 @@ async function run() {
                 const workflowFiles = changedFiles.filter((path) => path.startsWith(".github/workflows/"));
                 if (workflowFiles.length > 0) {
                     info(`[DEBUG 6-WARN] Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`);
-                    if (!isLikelyPAT(token)) {
-                        throw new Error("Workflow file changes detected. Your token does not appear to be a PAT with workflows permission. Provide a personal access token via github-token.");
+                    if (isDefaultGitHubToken) {
+                        throw new Error("Workflow file changes detected. The provided token is the default GITHUB_TOKEN, which cannot update workflow files. Provide a personal access token with repo and workflows permissions via github-token.");
                     }
-                    info("Workflow files are included in the rollback range, and the provided token appears to be a PAT. Continuing with push.");
+                    if (!isLikelyPAT(token)) {
+                        throw new Error("Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.");
+                    }
+                    info("Workflow files are included in the rollback range, and the provided token appears to be a personal access token. Continuing with push.");
                 }
             }
             catch (diffError) {

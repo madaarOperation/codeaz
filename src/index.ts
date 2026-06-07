@@ -101,12 +101,13 @@ async function run() {
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
       const githubTokenInput = core.getInput("github-token");
       const legacyTokenInput = core.getInput("token");
-      const token = githubTokenInput || legacyTokenInput || process.env.GITHUB_TOKEN;
+      const envGithubToken = process.env.GITHUB_TOKEN;
+      const token = githubTokenInput || legacyTokenInput || envGithubToken;
       const tokenSource = githubTokenInput
         ? "github-token input"
         : legacyTokenInput
         ? "token input"
-        : process.env.GITHUB_TOKEN
+        : envGithubToken
         ? "GITHUB_TOKEN env"
         : "none";
 
@@ -119,8 +120,11 @@ async function run() {
       const { owner, repo } = context.repo;
       core.info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
 
+      const isDefaultGitHubToken = !!envGithubToken && token === envGithubToken;
       const isLikelyPAT = (value: string): boolean => {
-        return /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value);
+        return (
+          /^(ghp_|gho_|ghu_|ghr_|github_pat_)/.test(value) || value.length === 40
+        );
       };
 
       // 2.5 Detect workflow file changes and warn if token may be insufficient
@@ -140,13 +144,18 @@ async function run() {
           core.info(
             `[DEBUG 6-WARN] Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`,
           );
+          if (isDefaultGitHubToken) {
+            throw new Error(
+              "Workflow file changes detected. The provided token is the default GITHUB_TOKEN, which cannot update workflow files. Provide a personal access token with repo and workflows permissions via github-token.",
+            );
+          }
           if (!isLikelyPAT(token)) {
             throw new Error(
-              "Workflow file changes detected. Your token does not appear to be a PAT with workflows permission. Provide a personal access token via github-token.",
+              "Workflow file changes detected. Provide a personal access token with repo and workflows permissions via github-token.",
             );
           }
           core.info(
-            "Workflow files are included in the rollback range, and the provided token appears to be a PAT. Continuing with push.",
+            "Workflow files are included in the rollback range, and the provided token appears to be a personal access token. Continuing with push.",
           );
         }
       } catch (diffError: any) {
