@@ -109,7 +109,6 @@ async function run() {
     }
 
     // Set Output Values
-    core.setOutput("time", new Date().toTimeString());
     core.setOutput("runner_name", username);
     core.setOutput("status", "authorized");
   } catch (error) {
