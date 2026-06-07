@@ -99,16 +99,55 @@ async function run() {
 
       // 2. Token Extraction Debugging
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
-      const token = core.getInput("github-token") || core.getInput("token") || process.env.GITHUB_TOKEN;
+      const githubTokenInput = core.getInput("github-token");
+      const legacyTokenInput = core.getInput("token");
+      const token = githubTokenInput || legacyTokenInput || process.env.GITHUB_TOKEN;
+      const tokenSource = githubTokenInput
+        ? "github-token input"
+        : legacyTokenInput
+        ? "token input"
+        : process.env.GITHUB_TOKEN
+        ? "GITHUB_TOKEN env"
+        : "none";
 
       if (!token) {
         core.info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
         throw new Error("TOKEN NOT GIVEN");
       }
-      core.info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters)`);
+      core.info(`[DEBUG 7] Token verified successfully (Length: ${token.length} characters) (${tokenSource})`);
 
       const { owner, repo } = context.repo;
       core.info(`[DEBUG 8] Target repository tracking details: ${owner}/${repo}`);
+
+      // 2.5 Detect workflow file changes and warn if token may be insufficient
+      try {
+        const diffOutput = execSync(`git diff --name-only ${lastCommit} HEAD`, {
+          stdio: ["pipe", "pipe", "ignore"],
+        }).toString("utf8");
+        const changedFiles = diffOutput
+          .split("\n")
+          .map((path) => path.trim())
+          .filter(Boolean);
+        const workflowFiles = changedFiles.filter((path) =>
+          path.startsWith(".github/workflows/"),
+        );
+
+        if (workflowFiles.length > 0 && tokenSource === "GITHUB_TOKEN env") {
+          core.error(
+            `Detected workflow file changes in the rollback range: ${workflowFiles.join(", ")}`,
+          );
+          core.error(
+            "GitHub may refuse a force-push that modifies workflow files when using GITHUB_TOKEN. Use a personal access token via the github-token input.",
+          );
+          throw new Error(
+            "Workflow file changes require a PAT with repo and workflow permissions.",
+          );
+        }
+      } catch (diffError: any) {
+        core.info(
+          `[DEBUG 6-NOTE] Unable to inspect changed files for workflow updates: ${diffError.message}`,
+        );
+      }
 
       // 3. Git Configuration Commands Debugging
       core.info(`[DEBUG 9] Executing git config user.email...`);
