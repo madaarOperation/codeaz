@@ -28987,12 +28987,47 @@ __webpack_unused_export__ = defaultContentType
 /******/ }
 /******/ 
 /************************************************************************/
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/make namespace object */
+/******/ (() => {
+/******/ 	// define __esModule on exports
+/******/ 	__nccwpck_require__.r = (exports) => {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/compat */
 /******/ 
 /******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
 /******/ 
 /************************************************************************/
 var __webpack_exports__ = {};
+
+// NAMESPACE OBJECT: ./node_modules/@actions/github/lib/github.js
+var github_namespaceObject = {};
+__nccwpck_require__.r(github_namespaceObject);
+__nccwpck_require__.d(github_namespaceObject, {
+  _: () => (github_context)
+});
 
 ;// CONCATENATED MODULE: external "os"
 const external_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("os");
@@ -36261,6 +36296,8 @@ function getOctokit(token, options, ...additionalPlugins) {
 // =================================================== #
 
 
+
+const { /* context */ "_": src_context } = github_namespaceObject;
 // INFO: Generate A Code Owners And It's Rule Key
 const parseCodeOwner = (input) => {
     const codeOwners = {};
@@ -36288,32 +36325,68 @@ const parseCodeOwner = (input) => {
 async function run() {
     try {
         const codeOwner = parseCodeOwner(getInput("code-owner"));
-        const recordLength = Object.keys(codeOwner).length;
-        info(`Hello ${JSON.stringify(codeOwner)} ${recordLength}`);
-        // 1. Extract Action Maker and Action
-        const username = github_context.actor;
+        const username = src_context.actor;
         if (!username) {
-            setFailed("Cloud not resolve the actor name.");
+            setFailed("Could not resolve the actor name.");
             return;
         }
-        info(`Successfully extract runner name: ${username}`);
-        // 2. Check Action Runner Permission
+        info(`Successfully extracted runner name: ${username}`);
+        // Check Action Runner Permission
         const devMembers = codeOwner["dev"] || [];
         const opsMembers = codeOwner["ops"] || [];
-        const isDevMember = devMembers.some((member) => member.toLowerCase() == username.toLowerCase());
-        const isOpsMember = opsMembers.some((member) => member.toLowerCase() == username.toLowerCase());
-        const branchName = github_context.ref.replace("refs/heads/", "");
+        const isDevMember = devMembers.some((member) => member.toLowerCase() === username.toLowerCase());
+        const isOpsMember = opsMembers.some((member) => member.toLowerCase() === username.toLowerCase());
+        const branchName = src_context.ref.replace("refs/heads/", "");
         if (isDevMember || isOpsMember) {
             info(`Access Granted: ${username} is a member of our development team at ${branchName}`);
         }
         else {
             warning(`Access Denied: ${username} is NOT in our development team at ${branchName}`);
-            info(`Resetting Branch '${branchName}' Changes`);
-            // TODO: Need To Reset User Work
+            info(`Resetting Branch '${branchName}' changes...`);
+            //#INFO RESET COMMITS BLOCK
+            let branch = "";
+            let lastCommit = "";
+            if (src_context.eventName === "pull_request") {
+                const pr = src_context.payload.pull_request;
+                if (!pr?.merged)
+                    return;
+                branch = pr.base.ref;
+                lastCommit = "HEAD~1";
+            }
+            else if (src_context.eventName === "push") {
+                branch = src_context.ref.replace("refs/heads/", "");
+                lastCommit = src_context.payload.before;
+            }
+            else if (src_context.eventName === "workflow_dispatch") {
+                branch = src_context.ref.replace("refs/heads/", "");
+                lastCommit = "HEAD~1";
+            }
+            const token = getInput("github-token") || getInput("token") || process.env.GITHUB_TOKEN;
+            if (!token) {
+                throw new Error("Authentication failed: No valid token provided.");
+            }
+            const { owner, repo } = src_context.repo;
+            //#INFO Authenticate Git 
+            (0,external_child_process_namespaceObject.execSync)('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
+            (0,external_child_process_namespaceObject.execSync)('git config --global user.name "github-actions[bot]"');
+            // #INFO: Hard reset 
+            (0,external_child_process_namespaceObject.execSync)(`git reset --hard ${lastCommit}`);
+            // #INFO: Clean cached For push credentials to prevent authentication issues
+            try {
+                (0,external_child_process_namespaceObject.execSync)('git config --local --unset-all http.https://github.com/.extraheader || true', { stdio: 'ignore' });
+            }
+            catch { }
+            //INFO:: 5. Force push 
+            const secureUrl = `https://${token}@github.com/${owner}/${repo}.git`;
+            (0,external_child_process_namespaceObject.execSync)(`git push "${secureUrl}" HEAD:${branch} --force`);
+            warning(`Security Action: History reset for ${username} is unauthorized`);
+            setOutput("status", "reset");
+            return;
         }
-        // 3. Set Output Values
+        // Set Output Values
         setOutput("time", new Date().toTimeString());
-        setOutput("runner_name: ", username);
+        setOutput("runner_name", username);
+        setOutput("status", "authorized");
     }
     catch (error) {
         if (error instanceof Error)

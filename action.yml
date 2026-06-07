@@ -9,12 +9,20 @@ inputs:
     required: true
     default: ""
   github-token:
-    description: github token to can reset any changes out code owners
-    required: true
+    description: GitHub token used to reset unauthorized changes and enforce code owner rules
+    required: false
+    default: ""
+  token:
+    description: optional legacy alias for github-token
+    required: false
     default: ""
 outputs:
   time:
-    description: The Time Code Merge Happen
+    description: The timestamp when the code merge/check occurred
+  runner_name:
+    description: The GitHub username of the action runner
+  status:
+    description: Status of the codeowner check ("authorized" if user is allowed, "reset" if unauthorized and reset was performed)
 runs:
   using: node24
   main: dist/index.js

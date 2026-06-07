@@ -28,7 +28,7 @@ Codeaz is a GitHub Action designed to enforce a role-based system over your repo
 | Input          | Description                                        | Required | Default |
 | -------------- | -------------------------------------------------- | -------- | ------- |
 | `code-owner`   | GitHub users allowed to push to the repo           | Yes      | ""      |
-| `github-token` | Token used to reset changes outside of code owners | Yes      | ""      |
+| `github-token` | Token used to reset changes outside of code owners. For workflow file rollback, use a PAT with repo + workflows permissions. | Yes      | ""      |
 
 ## Outputs
 
@@ -52,8 +52,10 @@ jobs:
         uses: your-username/codeaz@main
         with:
           code-owner: "user1, user2"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MY_PAT }}
 ```
+
+> Note: If rollback may include workflow files under `.github/workflows/`, do not use `GITHUB_TOKEN`. Use a personal access token with `repo` and `workflows` permissions.
 
 ## Development
 
