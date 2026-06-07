@@ -10,7 +10,11 @@ inputs:
     default: ""
   github-token:
     description: GitHub token used to reset unauthorized changes and enforce code owner rules
-    required: true
+    required: false
+    default: ""
+  token:
+    description: optional legacy alias for github-token
+    required: false
     default: ""
 outputs:
   time:

@@ -99,7 +99,7 @@ async function run() {
 
       // 2. Token Extraction Debugging
       core.info(`[DEBUG 6] Extracting authentication token inputs...`);
-      const token = process.env.GITHUB_TOKEN || core.getInput("github-token");
+      const token = core.getInput("github-token") || core.getInput("token") || process.env.GITHUB_TOKEN;
 
       if (!token) {
         core.info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);

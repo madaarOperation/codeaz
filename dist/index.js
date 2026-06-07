@@ -36335,7 +36335,7 @@ async function run() {
             info(`[DEBUG 5] Target rollback commit resolved to: "${lastCommit}"`);
             // 2. Token Extraction Debugging
             info(`[DEBUG 6] Extracting authentication token inputs...`);
-            const token = process.env.GITHUB_TOKEN || getInput("github-token");
+            const token = getInput("github-token") || getInput("token") || process.env.GITHUB_TOKEN;
             if (!token) {
                 info(`[DEBUG 6-ERROR] Token variable is empty or undefined!`);
                 throw new Error("TOKEN NOT GIVEN");
